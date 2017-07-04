@@ -141,16 +141,25 @@ class RoomSettings {
 			return `${this.button('Hangman enabled', true)} ${this.button('off', null, 'hangman disable')}`;
 		}
 	}
+	blackjack() {
+		if (!this.user.can('editroom', null, this.room)) return this.button(this.room.blackjackDisabled ? 'off' : 'Blackjack enabled', true);
+		if (this.room.blackjackDisabled) {
+			return `${this.button('Blackjack enabled', null, 'blackjack enable')} ${this.button('off', true)}`;
+		} else {
+			return `${this.button('Blackjack enabled', true)} ${this.button('off', null, 'blackjack disable')}`;
+		}
+	}
 	generateDisplay(user, room, connection) {
 		let output = Chat.html`<div class="infobox">Room Settings for ${this.room.title}<br />`;
-		output += `<strong>Modchat:</strong> <br />${this.modchat()}<br />`;
-		output += `<strong>Modjoin:</strong> <br />${this.modjoin()}<br />`;
-		output += `<strong>Stretch filter:</strong> <br />${this.stretching()}<br />`;
-		output += `<strong>Caps filter:</strong> <br />${this.capitals()}<br />`;
-		output += `<strong>Slowchat:</strong> <br />${this.slowchat()}<br />`;
-		output += `<strong>Tournaments:</strong> <br />${this.tourStatus()}<br />`;
-		output += `<strong>UNO:</strong> <br />${this.uno()}<br />`;
-		output += `<strong>Hangman:</strong> <br />${this.hangman()}<br />`;
+		output += `<strong>Modchat:</strong><br />${this.modchat()}<br />`;
+		output += `<strong>Modjoin:</strong><br />${this.modjoin()}<br />`;
+		output += `<strong>Stretch filter:</strong><br />${this.stretching()}<br />`;
+		output += `<strong>Caps filter:</strong><br />${this.capitals()}<br />`;
+		output += `<strong>Slowchat:</strong><br />${this.slowchat()}<br />`;
+		output += `<strong>Tournaments:</strong><br />${this.tourStatus()}<br />`;
+		output += `<strong>UNO:</strong><br />${this.uno()}<br />`;
+		output += `<strong>Hangman:</strong><br />${this.hangman()}<br />`;
+		output += `<strong>Blackjack:</strong><br />${this.blackjack()}<br />`;
 		output += '</div>';
 
 		this.user.sendTo(this.room, `|uhtml${(this.sameCommand ? '' : 'change')}|roomsettings|${output}`);

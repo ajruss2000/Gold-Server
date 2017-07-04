@@ -1120,6 +1120,7 @@ class ChatRoom extends Room {
 		if (!this.modjoin) this.modjoin = false;
 		if (!this.filterStretching) this.filterStretching = false;
 		if (!this.filterCaps) this.filterCaps = false;
+		if (!this.blackjackDisabled) this.blackjackDisabled = false;
 
 		this.type = 'chat';
 
