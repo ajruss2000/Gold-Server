@@ -35,6 +35,12 @@ const MAX_PARSE_RECURSION = 10;
 const VALID_COMMAND_TOKENS = '/!';
 const BROADCAST_TOKEN = '!';
 
+let HELP_AI = false;
+try {
+	HELP_AI = require('./chat-plugins/help-ai').HelpAI;
+} catch (e) {
+}
+
 const FS = require('./fs');
 
 let Chat = module.exports;
@@ -719,6 +725,14 @@ class CommandContext {
 				}
 				user.lastMessage = message;
 				user.lastMessageTime = Date.now();
+				if (HELP_AI && room.id === 'help' && !user.can('broadcast', null, room)) {
+					if (message.startsWith('HELP: ')) {
+						message = message.replace('HELP: ', '');
+					} else {
+						const autoReply = HELP_AI.getResponseHTML(message, null, room);
+						if (autoReply) return this.sendReplyBox(autoReply);
+					}
+				}
 			}
 
 			if (Config.chatfilter) {
