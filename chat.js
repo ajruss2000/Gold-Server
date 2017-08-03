@@ -164,6 +164,11 @@ Chat.baseCommands = undefined;
 Chat.commands = undefined;
 
 /*********************************************************
+ * Load chat filter
+ *********************************************************/
+Chat.filter = undefined;
+
+/*********************************************************
  * Parser
  *********************************************************/
 
@@ -721,8 +726,8 @@ class CommandContext {
 				user.lastMessageTime = Date.now();
 			}
 
-			if (Config.chatfilter) {
-				return Config.chatfilter.call(this, message, user, room, connection, targetUser);
+			if (Chat.filters.length) {
+				return Chat.filter.call(this, message, user, room, connection, targetUser);
 			}
 			return message;
 		}
@@ -894,7 +899,7 @@ Chat.CommandContext = CommandContext;
  * @param {Connection} connection - the connection the user sent the message from
  */
 Chat.parse = function (message, room, user, connection) {
-	Chat.loadCommands();
+	Chat.loadPlugins();
 	let context = new CommandContext({message, room, user, connection});
 
 	return context.parse();
@@ -920,8 +925,8 @@ Chat.uncacheTree = function (root) {
 	} while (uncache.length > 0);
 };
 
-Chat.loadCommands = function () {
-	if (Chat.commands) return;
+Chat.loadPlugins = function () {
+	if (Chat.commands || Chat.filter) return;
 
 	FS('package.json').readTextIfExists().then(data => {
 		if (data) Chat.package = JSON.parse(data);
@@ -929,16 +934,51 @@ Chat.loadCommands = function () {
 
 	let baseCommands = Chat.baseCommands = require('./chat-commands').commands;
 	let commands = Chat.commands = Object.assign({}, baseCommands);
+	let chatfilters = Chat.filters = [];
 
-	// Install plug-in commands
+	// Install plug-in commands and chat filter
 
 	// info always goes first so other plugins can shadow it
 	Object.assign(commands, require('./chat-plugins/info').commands);
 
 	for (let file of FS('chat-plugins/').readdirSync()) {
 		if (file.substr(-3) !== '.js' || file === 'info.js') continue;
-		Object.assign(commands, require('./chat-plugins/' + file).commands);
+		const plugin = require(`./chat-plugins/${file}`);
+
+		Object.assign(commands, plugin.commands);
+
+		const filter = plugin.chatfilter;
+		if (filter) {
+			if (typeof filter !== 'function') {
+				require('./crashlogger')(`This chatfilter is not a function`, `Loading a chatfilter`, {
+					file: `File location: ../chat-plugins/${file}`,
+					filter: filter,
+				});
+			} else { // only use chatfilters that are a function
+				chatfilters.push(filter);
+			}
+		}
 	}
+
+	Chat.filter = function (message, user, room, connection, targetUser) {
+		let outputs = [];
+		let newMessage = '';
+		for (let i = 0; i < chatfilters.length; i++) {
+			const output = chatfilters[i].call(this, message, user, room, connection, targetUser);
+			outputs.push(output);
+			if (typeof output === 'string' && message !== output) newMessage = output;
+		}
+
+		if (newMessage) {
+			// A chat filter has returned a new message, so return
+			// that instead of the original.
+			return newMessage;
+		} else if (!outputs.includes(false)) {
+			// No chat filters have returned false, so return the
+			// original message as a fallout.
+			return message;
+		}
+	};
 };
 
 /**
